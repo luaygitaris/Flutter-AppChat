@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test2/components/my_drawer.dart';
@@ -83,35 +84,124 @@ class HomePage extends StatelessWidget {
 
   void _showAddContactDialog(BuildContext context) {
   final TextEditingController emailController = TextEditingController();
+  Map<String, dynamic>? searchedUser;
+  bool isLoading = false;
+  String statusMessage = "";
+
   showDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text("Tambah Kontak"),
-      content: TextField(
-        controller: emailController,
-        decoration: InputDecoration(hintText: "Masukkan email"),
-      ),
-      actions: [
-        TextButton(
-          child: Text("Batal"),
-          onPressed: () => Navigator.pop(context),
-        ),
-        TextButton(
-          child: Text("Tambah"),
-          onPressed: () async {
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          Future<void> searchUser() async {
+            setState(() {
+              isLoading = true;
+              searchedUser = null;
+              statusMessage = "";
+            });
             try {
-              await _chatService.addContactByEmail(emailController.text.trim());
+              final userQuery = await FirebaseFirestore.instance
+                  .collection("Users")
+                  .where("email", isEqualTo: emailController.text.trim())
+                  .get();
+
+              if (userQuery.docs.isEmpty) {
+                setState(() {
+                  statusMessage = "User not found";
+                  isLoading = false;
+                });
+                return;
+              }
+
+              setState(() {
+                searchedUser = {
+                  "uid": userQuery.docs.first.id,
+                  "email": userQuery.docs.first["email"],
+                };
+                isLoading = false;
+              });
+            } catch (e) {
+              setState(() {
+                statusMessage = "Error: ${e.toString()}";
+                isLoading = false;
+              });
+            }
+          }
+
+          Future<void> addContact(Map<String, dynamic> user) async {
+            try {
+              final currentUserID =
+                  FirebaseAuth.instance.currentUser!.uid;
+
+              await FirebaseFirestore.instance
+                  .collection("Users")
+                  .doc(currentUserID)
+                  .collection("contacts")
+                  .doc(user["uid"])
+                  .set(user);
+
               Navigator.pop(context);
             } catch (e) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Gagal: ${e.toString()}")),
+                SnackBar(content: Text("Failed to add: $e")),
               );
             }
-          },
-        ),
-      ],
-    ),
+          }
+
+          return AlertDialog(
+            title: const Text("Add Contact"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: emailController,
+                  decoration: const InputDecoration(
+                      hintText: "Enter user email"),
+                ),
+                const SizedBox(height: 10),
+
+                // tombol search
+                ElevatedButton(
+                  onPressed: searchUser,
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text("Search"),
+                ),
+
+                const SizedBox(height: 20),
+
+                // hasil pencarian
+                if (searchedUser != null)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(searchedUser!["email"]),
+                      IconButton(
+                        icon: const Icon(Icons.person_add),
+                        onPressed: () => addContact(searchedUser!),
+                      ),
+                    ],
+                  )
+                else if (statusMessage.isNotEmpty)
+                  Text(statusMessage),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Close"),
+              ),
+            ],
+          );
+        },
+      );
+    },
   );
 }
+
 
 }

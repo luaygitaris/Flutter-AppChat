@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1001243659993",
+    "project_id": "appchattutor",
+    "storage_bucket": "appchattutor.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1001243659993:android:4d43df4a22deaa76ebb8c8",
+        "android_client_info": {
+          "package_name": "my.id.libra.flutter_test2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFbVPbQ3kuXWTOemGLnJx2wP0IN86kksI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

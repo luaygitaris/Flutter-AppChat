@@ -21,6 +21,14 @@ class HomePage extends StatelessWidget {
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.grey,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.person_add),
+            onPressed: () {
+              _showAddContactDialog(context);
+            },
+          )
+        ],
       ),
       drawer: MyDrawer(),
       body: _buildUserList(),
@@ -28,23 +36,29 @@ class HomePage extends StatelessWidget {
   }
 
   Widget _buildUserList() {
-    return StreamBuilder(
-      stream: _chatService.getUsersStream(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return const Text("error");
-        }
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Text("Loading...");
-        }
-
-        return ListView(
-          children: snapshot.data!.map<Widget>((userData) => _buildUserListItem(userData, context)).toList(),
-        );
+  return StreamBuilder(
+    stream: _chatService.getContactsStream(),
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        return const Text("error");
       }
-    );
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Text("Loading...");
+      }
+      final contacts = snapshot.data!;
+      if (contacts.isEmpty) {
+        return const Center(child: Text("Belum ada kontak"));
+      }
+      return ListView(
+        children: contacts
+            .map<Widget>((userData) =>
+                _buildUserListItem(userData, context))
+            .toList(),
+      );
+    },
+  );
   }
+
 
   Widget _buildUserListItem(Map<String, dynamic> userData, BuildContext context) {
     if (userData["email"] != _authService.getCurrentUser()!.email ) {
@@ -66,4 +80,38 @@ class HomePage extends StatelessWidget {
       return Container();
     }
   }
+
+  void _showAddContactDialog(BuildContext context) {
+  final TextEditingController emailController = TextEditingController();
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text("Tambah Kontak"),
+      content: TextField(
+        controller: emailController,
+        decoration: InputDecoration(hintText: "Masukkan email"),
+      ),
+      actions: [
+        TextButton(
+          child: Text("Batal"),
+          onPressed: () => Navigator.pop(context),
+        ),
+        TextButton(
+          child: Text("Tambah"),
+          onPressed: () async {
+            try {
+              await _chatService.addContactByEmail(emailController.text.trim());
+              Navigator.pop(context);
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Gagal: ${e.toString()}")),
+              );
+            }
+          },
+        ),
+      ],
+    ),
+  );
+}
+
 }
